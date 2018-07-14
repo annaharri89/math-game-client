@@ -1,0 +1,28 @@
+{
+  "name": "socketio-math-game",
+  "version": "0.0.1",
+  "description": "A math game, which uses sockets to update a global scoreboard.",
+  "main": "main.js",
+  "scripts": {
+    "test": "echo \"No tests defined\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/annaharri89/math-game-client.git"
+  },
+  "keywords": [
+    "math",
+    "game",
+    "socket.io",
+    "client"
+  ],
+  "author": "Anna Harrison",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/annaharri89/math-game-client/issues"
+  },
+  "homepage": "https://github.com/annaharri89/math-game-client#readme",
+  "dependencies": {
+    "socket.io": "^2.1.1"
+  }
+}
