@@ -8,174 +8,70 @@ $(function() {
     ];
 
     // Initialize variables
-    var $window = $(window);
-    var $usernameInput = $('.usernameInput'); // Input for username
-    var $messages = $('.messages'); // Messages area
-    var $inputMessage = $('.inputMessage'); // Input message input box
+    var $usernameInput = $('#username'); // Input for username
 
-    var $loginPage = $('.login.page'); // The login page
-    var $chatPage = $('.chat.page'); // The chatroom page
-    var $mathProblem = $('.math.problem');
+    var $loginPage = $('#login'); // The login page
+    var $mathGame = $('#math-game');
+    var $submitUsername = $('#submit-username');
+    var $scoreBoard = $('#score-board');
+    var $problem = $('#problem');
+    var $requestNewProblem = $('#new-problem');
+    var $isCorrect = $('#is-correct');
+    var $answer = $('#answer');
+    var $submitAnswer = $('#submit-answer');
 
     // Prompt for setting a username
+    $mathGame.hide();
     var username;
     var connected = false;
-    var typing = false;
-    var lastTypingTime;
     var $currentInput = $usernameInput.focus();
 
-    var socket = io();
-
-    const addParticipantsMessage = function (data) {
-        var message = '';
-        if (data.numUsers === 1) {
-            message += "there's 1 participant";
-        } else {
-            message += "there are " + data.numUsers + " participants";
-        }
-        log(message);
-    };
+    var socket = io('http://127.0.0.1:3000/');
 
     // Sets the client's username
-    const setUsername = function () {
+    var setUsername = function () {
         username = cleanInput($usernameInput.val().trim());
 
         // If the username is valid
         if (username) {
             $loginPage.fadeOut();
-            $chatPage.show();
-            $mathProblem.show();
+            $mathGame.show();
             $loginPage.off('click');
-            $currentInput = $inputMessage.focus();
+            $currentInput = $answer.focus();
 
             // Tell the server your username
             socket.emit('add user', username);
+            getNewProblem()
         }
     };
 
-    // Sends a chat message
-    const sendMessage = function () {
-        var message = $inputMessage.val();
-        // Prevent markup from being injected into the message
-        message = cleanInput(message);
-        // if there is a non-empty message and a socket connection
-        if (message && connected) {
-            $inputMessage.val('');
-            addChatMessage({
-                username: username,
-                message: message
-            });
-            // tell server to execute 'new message' and send along one parameter
-            socket.emit('new message', message);
-        }
-    };
+    $submitUsername.on('click', setUsername);
 
-    // Log a message
-    const log = function (message, options) {
-        var $el = $('<li>').addClass('log').text(message);
-        addMessageElement($el, options);
-    };
+    const getNewProblem = function () {
+        socket.emit('new problem');
+    }
+
+    $requestNewProblem.on('click', getNewProblem);
 
     // Adds the visual chat message to the message list
-    const addChatMessage = function (data, options) {
-        // Don't fade the message in if there is an 'X was typing'
-        var $typingMessages = getTypingMessages(data);
-        options = options || {};
-        if ($typingMessages.length !== 0) {
-            options.fade = false;
-            $typingMessages.remove();
-        }
+    const addScore = function (data) {
+        console.log(data);
+        var $userScoreDiv = $('#' + data.username);
+        if ($userScoreDiv !== undefined && $userScoreDiv !== null) {
+            $userScoreDiv.remove();
+        } 
 
-        var $usernameDiv = $('<span class="username"/>')
-            .text(data.username)
+        $userScoreDiv = $('<span id="'+ data.username +'"/><br/>')
+            .text(`${data.username}'s score has gone up to ${data.score}`)
             .css('color', getUsernameColor(data.username));
-        var $messageBodyDiv = $('<span class="messageBody">')
-            .text(data.message);
 
-        var typingClass = data.typing ? 'typing' : '';
-        var $messageDiv = $('<li class="message"/>')
-            .data('username', data.username)
-            .addClass(typingClass)
-            .append($usernameDiv, $messageBodyDiv);
-
-        addMessageElement($messageDiv, options);
-    };
-
-    // Adds the visual chat typing message
-    const addChatTyping = function (data) {
-        data.typing = true;
-        data.message = 'is typing';
-        addChatMessage(data);
-    };
-
-    // Removes the visual chat typing message
-    const removeChatTyping = function (data) {
-        getTypingMessages(data).fadeOut( function () {
-            $(this).remove();
-        });
-    };
-
-    // Adds a message element to the messages and scrolls to the bottom
-    // el - The element to add as a message
-    // options.fade - If the element should fade-in (default = true)
-    // options.prepend - If the element should prepend
-    //   all other messages (default = false)
-    const addMessageElement = function (el, options) {
-        var $el = $(el);
-
-        // Setup default options
-        if (!options) {
-            options = {};
-        }
-        if (typeof options.fade === 'undefined') {
-            options.fade = true;
-        }
-        if (typeof options.prepend === 'undefined') {
-            options.prepend = false;
-        }
-
-        // Apply options
-        if (options.fade) {
-            $el.hide().fadeIn(FADE_TIME);
-        }
-        if (options.prepend) {
-            $messages.prepend($el);
-        } else {
-            $messages.append($el);
-        }
-        $messages[0].scrollTop = $messages[0].scrollHeight;
+        $scoreBoard.prepend($userScoreDiv);
+        $scoreBoard.prepend('<br />')
     };
 
     // Prevents input from having injected markup
     const cleanInput = function (input) {
         return $('<div/>').text(input).html();
-    };
-
-    // Updates the typing event
-    const updateTyping = function () {
-        if (connected) {
-            if (!typing) {
-                typing = true;
-                socket.emit('typing');
-            }
-            lastTypingTime = (new Date()).getTime();
-
-            setTimeout(function () {
-                var typingTimer = (new Date()).getTime();
-                var timeDiff = typingTimer - lastTypingTime;
-                if (timeDiff >= TYPING_TIMER_LENGTH && typing) {
-                    socket.emit('stop typing');
-                    typing = false;
-                }
-            }, TYPING_TIMER_LENGTH);
-        }
-    };
-
-    // Gets the 'X is typing' messages of a user
-    const getTypingMessages = function (data) {
-        return $('.typing.message').filter(function (i) {
-            return $(this).data('username') === data.username;
-        });
     };
 
     // Gets the color of a username through our hash function
@@ -190,27 +86,8 @@ $(function() {
         return COLORS[index];
     };
 
-    // Keyboard events
-
-    $window.keydown(function (event) {
-        // Auto-focus the current input when a key is typed
-        if (!(event.ctrlKey || event.metaKey || event.altKey)) {
-            $currentInput.focus();
-        }
-        // When the client hits ENTER on their keyboard
-        if (event.which === 13) {
-            if (username) {
-                sendMessage();
-                socket.emit('stop typing');
-                typing = false;
-            } else {
-                setUsername();
-            }
-        }
-    });
-
-    $inputMessage.on('input', function () {
-        updateTyping();
+    $submitAnswer.on('click', function() {
+        socket.emit('answer', $answer.val());
     });
 
     // Click events
@@ -220,9 +97,9 @@ $(function() {
         $currentInput.focus();
     });
 
-    // Focus input when clicking on the message input's border
-    $inputMessage.click(function () {
-        $inputMessage.focus();
+    // Focus input when clicking on the answer input's border
+    $answer.click(function () {
+        $answer.focus();
     });
 
     // Socket events
@@ -231,58 +108,47 @@ $(function() {
     socket.on('login', function (data) {
         connected = true;
         // Display the welcome message
-        var message = "Welcome to Socket.IO Chat – ";
-        log(message, {
-            prepend: true
-        });
-        addParticipantsMessage(data);
-    });
-
-    // Whenever the server emits 'new message', update the chat body
-    socket.on('new message', function (data) {
-        addChatMessage(data);
+        var message = "Welcome to Socket.IO Math Game – ";
+        console.log(message);
     });
 
     // Whenever the server emits 'user joined', log it in the chat body
     socket.on('user joined', function (data) {
-        log(data.username + ' joined');
-        addParticipantsMessage(data);
+        console.log(`${data.username}  joined`);
     });
 
     // Whenever the server emits 'user left', log it in the chat body
     socket.on('user left', function (data) {
-        log(data.username + ' left');
-        addParticipantsMessage(data);
-        removeChatTyping(data);
-    });
-
-    // Whenever the server emits 'typing', show the typing message
-    socket.on('typing', function (data) {
-        addChatTyping(data);
-    });
-
-    // Whenever the server emits 'stop typing', kill the typing message
-    socket.on('stop typing', function (data) {
-        removeChatTyping(data);
+        console.log(`${data.username} left`);
     });
 
     socket.on('disconnect', function () {
-        log('you have been disconnected');
+        console.log('you have been disconnected');
     });
 
     socket.on('reconnect', function () {
-        log('you have been reconnected');
+        console.log('you have been reconnected');
         if (username) {
             socket.emit('add user', username);
         }
     });
 
     socket.on('reconnect_error', function () {
-        log('attempt to reconnect has failed');
+        console.log('attempt to reconnect has failed');
     });
 
-    /*Math Game Start*/
+    socket.on('evaluation', function (data) {
+        if (data.isCorrect) {
+            $isCorrect.text("You got the problem right!");
+        } else {
+            $isCorrect.text("You got the problem wrong. Try again.")
+        }
+    });
 
-    /*Math Game End*/
+    socket.on('new problem', function(data) {
+        $problem.text(`${data.firstInt} + ${data.secondInt}`);
+    });
+
+    socket.on('user score',  addScore);
 
 });
