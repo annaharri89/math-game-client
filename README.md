@@ -5,4 +5,4 @@ The client for a demonstration of sockets, used to drive a math game with a glob
 Clone the repo and then run `npm run start` to run the client.
 
 ## Sample Math Game
-![Sample Math Game](sample_math_game.png)
+![Sample Math Game](sample_math_game.PNG)
